@@ -222,6 +222,36 @@ export default function App() {
     return `${value}°C`;
   }
 
+  const [inferenceStatus, setInferenceStatus] = useState('Unknown')
+  const [inferenceResponse, setInferenceResponse] = useState('')
+
+  const handleInferenceHealthCheck = async () => {
+    console.log("Inference health check button pressed");
+    try {
+      console.log("Sending request to /api/healthcheck-inference");
+      const response = await fetch('/api/healthcheck-inference', {
+        method: 'GET',
+      });
+
+      console.log('Response status:', response.status);
+      console.log('Response headers:', response.headers);
+
+      const data = await response.json();
+      console.log('Inference health check result:', data);
+
+      if (!response.ok) {
+        throw new Error(`Inference health check failed: ${response.status} ${response.statusText}`);
+      }
+
+      setInferenceStatus('Healthy')
+      setInferenceResponse(data.response)
+    } catch (error) {
+      console.error('Error during inference health check:', error);
+      setInferenceStatus('Unhealthy')
+      setInferenceResponse(error.message)
+    }
+  };
+
   return (
     <main onMouseDown={handleMainClick} style={{ userSelect: 'none' }}>
       <div style={{ marginBottom: '20px', padding: '10px', backgroundColor: '#f0f0f0', borderRadius: '5px' }}>
@@ -350,6 +380,20 @@ export default function App() {
         <div style={{ marginLeft: '20px' }}>
           Backend Status: {backendStatus}
           {lastCheckTime && ` (Last checked: ${lastCheckTime})`}
+        </div>
+      </div>
+
+      <div style={{ marginTop: '20px', display: 'flex', alignItems: 'center' }}>
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={handleInferenceHealthCheck}
+        >
+          Inference Health Check
+        </Button>
+        <div style={{ marginLeft: '20px' }}>
+          Inference Status: {inferenceStatus}
+          {inferenceResponse && ` (Response: ${inferenceResponse})`}
         </div>
       </div>
 
