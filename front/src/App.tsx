@@ -1,9 +1,10 @@
 import './App.css'
 import { useState, useRef, useEffect } from 'react'
 import { Slider, ToggleButtonGroup, ToggleButton, Button } from '@mui/material'
+import { EnhancePromptRequest, EnhancePromptResponse, Question } from './types';
 
 export default function App() {
-  const [answers, setAnswers] = useState({})
+  const [answers, setAnswers] = useState<{ [key: number]: string | number }>({})
   const [visitedRows, setVisitedRows] = useState({})
   const [focusedRowIndex, setFocusedRowIndex] = useState(0)
   const [systemInstruction, setSystemInstruction] = useState('')
@@ -160,33 +161,44 @@ export default function App() {
 
   const handleEnhancePrompt = async () => {
     try {
-      const response = await fetch('/api/enhance-prompt', {
+      const requestBody: EnhancePromptRequest = {
+        currentSysPrompt: systemInstruction,
+        previousSysPrompt: '', // Add logic to get the previous system prompt if needed
+        questions: questions?.map(q => ({
+          question: q.text || '',
+          choices: q.options || [], // Ensure choices is always an array
+          answer: String(answers[q.id] || '')
+        })) || []
+      };
+
+      const response = await fetch('/api/enhance-prompt-v1', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ prompt: systemInstruction }),
-      })
+        body: JSON.stringify(requestBody),
+      });
 
       if (!response.ok) {
-        throw new Error('Network response was not ok')
+        throw new Error('Network response was not ok');
       }
 
-      const data = await response.json()
-      
-      // Assuming the API returns an array of question objects
-      // Each object should have { id, text, type, options } properties
-      setQuestions(data.questions)
-      
-      // Reset answers and visited rows for new questions
-      setAnswers({})
-      setVisitedRows({})
-      setFocusedRowIndex(0)
+      const data: EnhancePromptResponse = await response.json();
+      console.log('Enhanced prompt response:', data);
+
+      if (data.questions) {
+        setQuestions(data.questions);
+      } else {
+        console.error('No questions returned from enhance prompt response');
+      }
+
+      setAnswers({});
+      setVisitedRows({});
+      setFocusedRowIndex(0);
     } catch (error) {
-      console.error('Error enhancing prompt:', error)
-      // You might want to show an error message to the user here
+      console.error('Error enhancing prompt:', error);
     }
-  }
+  };
 
   const handleHealthCheck = async () => {
     console.log("Health check button pressed");
@@ -293,7 +305,7 @@ export default function App() {
           </tr>
         </thead>
         <tbody>
-          {questions.map((question, index) => (
+          {questions && questions.map((question, index) => (
             <tr 
               key={question.id} 
               ref={el => rowRefs.current[index] = el} 
@@ -324,14 +336,14 @@ export default function App() {
                     onChange={(event, newValue) => handleToggleChange(question.id, event, newValue)}
                     aria-label={question.text}
                   >
-                    {question.options.map(option => (
+                    {question.options?.map(option => (
                       <ToggleButton key={option} value={option} aria-label={option}>
                         {option}
                       </ToggleButton>
                     ))}
                   </ToggleButtonGroup>
                 ) : (
-                  question.options.map(option => (
+                  question.options?.map(option => (
                     <label key={option} style={{ marginRight: '10px' }}>
                       <input
                         type="radio"
