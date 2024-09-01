@@ -7,6 +7,8 @@ export default function App() {
   const [visitedRows, setVisitedRows] = useState({})
   const [focusedRowIndex, setFocusedRowIndex] = useState(0)
   const [systemInstruction, setSystemInstruction] = useState('')
+  const [backendStatus, setBackendStatus] = useState('Unknown')
+  const [lastCheckTime, setLastCheckTime] = useState(null)
   const [questions, setQuestions] = useState([
     {
       id: 1,
@@ -186,6 +188,36 @@ export default function App() {
     }
   }
 
+  const handleHealthCheck = async () => {
+    console.log("Health check button pressed");
+    try {
+      console.log("Sending request to /api/healthcheck");
+      const response = await fetch('/api/healthcheck', {
+        method: 'GET',
+      });
+
+      console.log('Response status:', response.status);
+      console.log('Response headers:', response.headers);
+
+      const text = await response.text();
+      console.log('Response text:', text);
+
+      if (!response.ok) {
+        throw new Error(`Health check failed: ${response.status} ${response.statusText}`);
+      }
+
+      const data = JSON.parse(text);
+      console.log('Health check result:', data);
+      
+      setBackendStatus('Alive')
+      setLastCheckTime(new Date().toLocaleString())
+    } catch (error) {
+      console.error('Error during health check:', error);
+      setBackendStatus('Down')
+      setLastCheckTime(new Date().toLocaleString())
+    }
+  };
+  
   const valuetext = (value: number) => {
     return `${value}°C`;
   }
@@ -213,7 +245,7 @@ export default function App() {
         />
       </div>
       
-      <div style={{ marginTop: '10px', marginBottom: '20px' }}>
+      <div style={{ marginTop: '10px', marginBottom: '20px', display: 'flex', alignItems: 'center' }}>
         <Button
           variant="contained"
           color="secondary"
@@ -304,6 +336,21 @@ export default function App() {
         >
           Submit
         </Button>
+        
+      </div>
+
+      <div style={{ marginTop: '20px', display: 'flex', alignItems: 'center' }}>
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={handleHealthCheck}
+        >
+          Health Check
+        </Button>
+        <div style={{ marginLeft: '20px' }}>
+          Backend Status: {backendStatus}
+          {lastCheckTime && ` (Last checked: ${lastCheckTime})`}
+        </div>
       </div>
 
       <p>For questions or feedback please contact at adix@adixstudios.com</p>
